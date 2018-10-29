@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:batch="http://www.springframework.org/schema/batch"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch.xsd http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd">
+
+    <import resource="config.xml"/>
+
+    <!--<bean id = "mysqlItemWriter"-->
+          <!--class = "org.springframework.batch.item.xml.StaxEventItemWriter">-->
+        <!--<property name = "resource" value = "file:xml/outputs/userss.xml" />-->
+        <!--<property name = "marshaller" ref = "reportMarshaller" />-->
+        <!--<property name = "rootTagName" value = "Tutorial" />-->
+    <!--</bean>-->
+    <bean id = "mysqlItemWriter" class = "org.springframework.batch.item.database.JdbcBatchItemWriter">
+        <property name = "dataSource" ref = "dataSource" />
+        <property name = "sql">
+            <value>
+                <![CDATA[insert into TUTORIALS (tutorial_id, tutorial_author, tutorial_title,
+               submission_date, tutorial_icon, tutorial_description)
+               values (:tutorial_id, :tutorial_author, :tutorial_title, :submission_date,
+               :tutorial_icon, :tutorial_description);]]>
+            </value>
+        </property>
+
+        <property name = "itemSqlParameterSourceProvider">
+            <bean class = "org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+        </property>
+    </bean>
+
+    <bean id="tutorialFieldSetMapper" class="com.itss.spring.mapper.TutorialFieldSetMapper"/>
+
+    <bean id = "customUnMarshaller" class = "org.springframework.oxm.xstream.XStreamMarshaller">
+        <property name = "aliases">
+            <util:map id = "aliases">
+                <entry key = "tutorial" value="com.itss.spring.entities.Tutorial" />
+            </util:map>
+        </property>
+    </bean>
+
+    <bean id = "xmlItemReader"
+          class = "org.springframework.batch.item.xml.StaxEventItemReader">
+        <property name = "fragmentRootElementName" value = "tutorial" />
+        <property name = "resource" value = "/xml/outputs/userss.xml" />
+        <property name = "unmarshaller" ref = "customUnMarshaller" />
+    </bean>
+
+    <bean id = "itemProcessor" class = "com.itss.spring.processor.CustomItemProcessor" />
+
+    <batch:job id = "helloWorldJob">
+        <batch:step id = "helloWorldJob_step1">
+            <batch:tasklet>
+                <batch:chunk reader = "xmlItemReader" writer = "mysqlItemWriter" processor = "itemProcessor" commit-interval="5">
+                </batch:chunk>
+            </batch:tasklet>
+        </batch:step>
+    </batch:job>
+
+    <bean id = "tasklet" class = "com.itss.spring.tasklets.MyTasklet" />
+    <!-- Defining a job-->
+    <batch:job id = "helloWorldJobSimple">
+        <!-- Defining a Step -->
+        <batch:step id = "step1">
+            <tasklet ref = "tasklet"/>
+        </batch:step>
+    </batch:job>
+</beans>
